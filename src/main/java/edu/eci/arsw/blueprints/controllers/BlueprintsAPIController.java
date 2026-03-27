@@ -15,58 +15,63 @@ import java.util.Map;
 import java.util.Set;
 
 @RestController
-@RequestMapping("/blueprints")
+@RequestMapping("/api/v1/blueprints")
 public class BlueprintsAPIController {
 
     private final BlueprintsServices services;
 
     public BlueprintsAPIController(BlueprintsServices services) { this.services = services; }
 
-    // GET /blueprints
+    // GET /api/v1/blueprints
     @GetMapping
-    public ResponseEntity<Set<Blueprint>> getAll() {
-        return ResponseEntity.ok(services.getAllBlueprints());
+    public ResponseEntity<ApiResponse<Set<Blueprint>>> getAll() {
+        ApiResponse<Set<Blueprint>> response = new ApiResponse<>(200, "blueprints retrieved", services.getAllBlueprints());
+        return ResponseEntity.ok(response);
     }
 
-    // GET /blueprints/{author}
+    // GET /api/v1/blueprints/{author}
     @GetMapping("/{author}")
     public ResponseEntity<?> byAuthor(@PathVariable String author) {
         try {
-            return ResponseEntity.ok(services.getBlueprintsByAuthor(author));
+            ApiResponse<Set<Blueprint>> response = new ApiResponse<>(200, "author blueprints retrieved", services.getBlueprintsByAuthor(author));
+            return ResponseEntity.ok(response);
         } catch (BlueprintNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
     }
 
-    // GET /blueprints/{author}/{bpname}
+    // GET /api/v1/blueprints/{author}/{bpname}
     @GetMapping("/{author}/{bpname}")
     public ResponseEntity<?> byAuthorAndName(@PathVariable String author, @PathVariable String bpname) {
         try {
-            return ResponseEntity.ok(services.getBlueprint(author, bpname));
+            ApiResponse<Blueprint> response = new ApiResponse<>(200, "blueprint retrieved", services.getBlueprint(author, bpname));
+            return ResponseEntity.ok(response);
         } catch (BlueprintNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
     }
 
-    // POST /blueprints
+    // POST /api/v1/blueprints
     @PostMapping
     public ResponseEntity<?> add(@Valid @RequestBody NewBlueprintRequest req) {
         try {
             Blueprint bp = new Blueprint(req.author(), req.name(), req.points());
             services.addNewBlueprint(bp);
-            return ResponseEntity.status(HttpStatus.CREATED).build();
+            ApiResponse<Blueprint> response = new ApiResponse<>(201, "blueprint created", bp);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (BlueprintPersistenceException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
         }
     }
 
-    // PUT /blueprints/{author}/{bpname}/points
+    // PUT /api/v1/blueprints/{author}/{bpname}/points
     @PutMapping("/{author}/{bpname}/points")
     public ResponseEntity<?> addPoint(@PathVariable String author, @PathVariable String bpname,
                                       @RequestBody Point p) {
         try {
             services.addPoint(author, bpname, p.x(), p.y());
-            return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+            ApiResponse<Point> response = new ApiResponse<>(202, "point added", p);
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
         } catch (BlueprintNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
@@ -77,4 +82,7 @@ public class BlueprintsAPIController {
             @NotBlank String name,
             @Valid java.util.List<Point> points
     ) { }
+
+    public record ApiResponse<T>(int code, String message, T data) {
+    }
 }
